@@ -46,12 +46,11 @@ if not hf_token:
 
 @st.cache_resource
 def get_llm():
-    # Uses direct requests to HF API — bypasses broken provider routing
+    # Runs 100% locally — no internet needed after first download (~82MB)
     return HFInferenceLLM(
-        model_id="mistralai/Mistral-7B-Instruct-v0.2",
+        model_id="distilgpt2",
         hf_token=hf_token,
-        max_new_tokens=512,
-        temperature=0.3
+        max_new_tokens=200,
     )
 
 llm = get_llm()

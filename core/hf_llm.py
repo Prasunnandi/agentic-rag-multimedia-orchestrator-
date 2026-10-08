@@ -1,7 +1,6 @@
 """
-Local LangChain-compatible LLM using transformers.pipeline.
-Runs 100% offline after the first model download — no API calls needed.
-Uses google/flan-t5-small (~300MB, CPU-friendly, Streamlit-free-tier-safe).
+Local LangChain-compatible LLM using transformers text-generation pipeline.
+Uses distilgpt2 (~82MB) — works on all transformers versions, fully offline.
 """
 from typing import Optional, List, Any
 from langchain_core.language_models.llms import LLM
@@ -22,10 +21,12 @@ def _get_pipeline(model_id: str, max_new_tokens: int):
             device = -1
 
         _PIPELINE_CACHE[model_id] = pipeline(
-            "text2text-generation",
+            "text-generation",
             model=model_id,
             device=device,
             max_new_tokens=max_new_tokens,
+            do_sample=False,
+            pad_token_id=50256,  # eos token for GPT-2 family — avoids warning
         )
     return _PIPELINE_CACHE[model_id]
 
@@ -33,8 +34,8 @@ def _get_pipeline(model_id: str, max_new_tokens: int):
 class HFInferenceLLM(LLM):
     """Local HuggingFace pipeline LLM — runs offline after first download."""
 
-    model_id: str = "google/flan-t5-small"
-    max_new_tokens: int = 256
+    model_id: str = "distilgpt2"
+    max_new_tokens: int = 200
     hf_token: str = ""  # kept for interface compatibility but unused locally
 
     @property
@@ -50,11 +51,14 @@ class HFInferenceLLM(LLM):
     ) -> str:
         try:
             pipe = _get_pipeline(self.model_id, self.max_new_tokens)
-            # Truncate to avoid token overflow on small model
-            truncated = prompt[:1500]
+            # Truncate to avoid token overflow
+            truncated = prompt[:800]
             result = pipe(truncated)
             if result and isinstance(result, list):
-                return result[0].get("generated_text", "").strip()
+                full_text = result[0].get("generated_text", "")
+                # Strip the input prompt from output (text-generation includes it)
+                answer = full_text[len(truncated):].strip()
+                return answer if answer else full_text.strip()
             return str(result)
         except Exception as e:
             return f"[Local LLM Error]: {str(e)}"
