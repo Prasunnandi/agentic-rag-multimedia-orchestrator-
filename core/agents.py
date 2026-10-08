@@ -1,7 +1,6 @@
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.tools import tool
 
 try:
     from core.tools import web_search, scrape_url
