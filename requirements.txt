@@ -1,0 +1,8 @@
+langchain
+langchain-community
+langchain-openai
+openai-whisper
+chromadb
+tavily-python
+pydub
+moviepy
