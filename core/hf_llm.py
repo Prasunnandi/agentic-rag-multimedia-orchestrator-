@@ -1,25 +1,39 @@
 """
-Custom LangChain-compatible LLM that calls HuggingFace Inference API directly
-via requests — bypassing the broken provider routing in huggingface_hub >= 0.27.
-Works 100% on the free HF tier.
+Local LangChain-compatible LLM using transformers.pipeline.
+Runs 100% offline after the first model download — no API calls, no network needed.
+Uses google/flan-t5-small (~300MB, CPU-friendly, Streamlit-free-tier-safe).
 """
-import requests
 from typing import Optional, List, Any
 from langchain_core.language_models.llms import LLM
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 
 
 class HFInferenceLLM(LLM):
-    """Direct HuggingFace Inference API LLM — no provider routing."""
+    """Local HuggingFace pipeline LLM — runs offline after first download."""
 
-    model_id: str = "mistralai/Mistral-7B-Instruct-v0.2"
-    hf_token: str = ""
-    max_new_tokens: int = 512
-    temperature: float = 0.3
+    model_id: str = "google/flan-t5-small"
+    max_new_tokens: int = 256
+    hf_token: str = ""  # kept for API compat but not used locally
+
+    # Store pipeline as class variable to avoid re-loading on every call
+    _pipeline: Any = None
 
     @property
     def _llm_type(self) -> str:
-        return "hf_inference_direct"
+        return "hf_local_pipeline"
+
+    def _get_pipeline(self):
+        if HFInferenceLLM._pipeline is None:
+            from transformers import pipeline
+            import torch
+            device = 0 if torch.cuda.is_available() else -1
+            HFInferenceLLM._pipeline = pipeline(
+                "text2text-generation",
+                model=self.model_id,
+                device=device,
+                max_new_tokens=self.max_new_tokens,
+            )
+        return HFInferenceLLM._pipeline
 
     def _call(
         self,
@@ -28,30 +42,13 @@ class HFInferenceLLM(LLM):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
-        url = f"https://api-inference.huggingface.co/models/{self.model_id}"
-        headers = {"Authorization": f"Bearer {self.hf_token}"}
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": self.max_new_tokens,
-                "temperature": self.temperature,
-                "return_full_text": False,
-            },
-        }
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            result = response.json()
-
-            # HF returns a list of dicts with "generated_text"
-            if isinstance(result, list) and len(result) > 0:
+            pipe = self._get_pipeline()
+            # Truncate prompt to avoid token overflow on tiny model
+            truncated = prompt[:1500]
+            result = pipe(truncated)
+            if result and isinstance(result, list):
                 return result[0].get("generated_text", "").strip()
-            elif isinstance(result, dict):
-                # Some models return {"error": "..."} if loading
-                if "error" in result:
-                    return f"[Model loading, please try again in 20s]: {result['error']}"
-                return str(result)
             return str(result)
-
-        except requests.exceptions.RequestException as e:
-            return f"[API Error]: {str(e)}"
+        except Exception as e:
+            return f"[Local LLM Error]: {str(e)}"

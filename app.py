@@ -1,13 +1,11 @@
 from core.agents import build_search_agent, build_reader_agent, build_writer_chain
 import streamlit as st
 import os
-import tempfile
 from dotenv import load_dotenv
 from core.hf_llm import HFInferenceLLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 import PyPDF2
 
 from utils.audio_processor import download_and_process_audio
@@ -169,25 +167,29 @@ if st.session_state.transcript:
         for msg in st.session_state.chat_history:
             st.chat_message(msg["role"]).write(msg["content"])
             
-        if prompt := st.chat_input("Ask a question about the video/document..."):
-            st.session_state.chat_history.append({"role": "user", "content": prompt})
-            st.chat_message("user").write(prompt)
+        if user_input := st.chat_input("Ask a question about the video/document..."):
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
+            st.chat_message("user").write(user_input)
             
             with st.spinner("Thinking..."):
-                system_prompt = (
-                    "You are a helpful assistant. Answer the user's question based ONLY on the provided context.\n"
-                    "Context: {context}\n"
-                )
-                prompt_template = ChatPromptTemplate.from_messages([
-                    ("system", system_prompt),
-                    ("human", "{input}")
-                ])
-                
-                qa_chain = create_stuff_documents_chain(llm, prompt_template)
-                rag_chain = create_retrieval_chain(st.session_state.retriever, qa_chain)
-                
-                response = rag_chain.invoke({"input": prompt})
-                answer = response["answer"]
+                try:
+                    # Retrieve top relevant chunks
+                    docs = st.session_state.retriever.invoke(user_input)
+                    context = "\n\n".join([d.page_content for d in docs])[:1500]
+                    
+                    # Build simple prompt compatible with text2text models
+                    from langchain_core.prompts import PromptTemplate
+                    from langchain_core.output_parsers import StrOutputParser
+                    qa_prompt = PromptTemplate.from_template(
+                        "Answer this question based on the context below.\n\n"
+                        "Context: {context}\n\n"
+                        "Question: {question}\n\n"
+                        "Answer:"
+                    )
+                    chain = qa_prompt | llm | StrOutputParser()
+                    answer = chain.invoke({"context": context, "question": user_input})
+                except Exception as e:
+                    answer = f"Error: {str(e)}"
                 
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 st.chat_message("assistant").write(answer)
