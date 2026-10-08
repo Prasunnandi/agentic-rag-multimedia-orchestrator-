@@ -49,7 +49,7 @@ if not hf_token:
 @st.cache_resource
 def get_llm():
     return HuggingFaceEndpoint(
-        endpoint_url="https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+        repo_id="HuggingFaceH4/zephyr-7b-beta",
         huggingfacehub_api_token=hf_token,
         max_new_tokens=512,
         temperature=0.3
