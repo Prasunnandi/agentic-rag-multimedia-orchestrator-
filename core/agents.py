@@ -1,10 +1,14 @@
-from langchain.agents import create_react_agent, AgentExecutor
+from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from core.tools import web_search, scrape_url
+from langchain_core.tools import tool
 
-# We use the generic ReAct prompt because HuggingFace Mistral-7B 
-# doesn't support OpenAI's proprietary tool-calling schema natively.
+try:
+    from core.tools import web_search, scrape_url
+except ImportError:
+    from tools import web_search, scrape_url
+
+# ReAct prompt template
 react_prompt_template = """Answer the following questions as best you can. You have access to the following tools:
 
 {tools}
@@ -25,19 +29,35 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}"""
 
+
 def build_search_agent(llm):
     prompt = PromptTemplate.from_template(react_prompt_template)
     agent = create_react_agent(llm, [web_search], prompt)
-    return AgentExecutor(agent=agent, tools=[web_search], verbose=True, handle_parsing_errors=True)
+    return AgentExecutor(
+        agent=agent,
+        tools=[web_search],
+        verbose=True,
+        handle_parsing_errors=True,
+        max_iterations=3,
+    )
+
 
 def build_reader_agent(llm):
     prompt = PromptTemplate.from_template(react_prompt_template)
     agent = create_react_agent(llm, [scrape_url], prompt)
-    return AgentExecutor(agent=agent, tools=[scrape_url], verbose=True, handle_parsing_errors=True)
+    return AgentExecutor(
+        agent=agent,
+        tools=[scrape_url],
+        verbose=True,
+        handle_parsing_errors=True,
+        max_iterations=3,
+    )
+
 
 def build_writer_chain(llm):
-    # A simple sequential chain for the writer
     prompt = PromptTemplate.from_template(
-        "You are an expert Writer Agent. Based on the following research facts, write a comprehensive, professional summary report.\n\nResearch Facts:\n{facts}\n\nReport:"
+        "You are an expert Writer. Based on the following research facts, "
+        "write a comprehensive professional summary report.\n\n"
+        "Research Facts:\n{facts}\n\nReport:"
     )
     return prompt | llm | StrOutputParser()
