@@ -19,6 +19,24 @@ from core.extractor import Extractor
 load_dotenv()
 
 st.set_page_config(page_title="AI Video Assistant & RAG", layout="wide")
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+html, body, [class*="css"] { font-family: 'JetBrains Mono', monospace; background-color: #0a0a0f !important; color: #e8e8f0 !important; }
+.stApp { background: #0a0a0f !important; }
+.stApp::before {
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+}
+[data-testid="stSidebar"] { background: #111118 !important; border-right: 1px solid #2a2a3a !important; }
+[data-testid="stSidebar"] * { color: #e8e8f0 !important; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Syne', sans-serif !important; color: #e8e8f0 !important; }
+.stButton>button { background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%) !important; color: white !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🎥 AI Video Assistant & Document RAG")
 st.markdown("Powered by Hugging Face API (Mistral), Whisper (Tiny), and LangChain")
 
