@@ -8,7 +8,15 @@ def download_and_process_audio(url, output_path="temp_audio.wav"):
             'format': 'bestaudio/best',
             'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav', 'preferredquality': '192'}],
             'outtmpl': 'downloaded_audio.%(ext)s',
-            'quiet': True
+            'quiet': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36'
+            }
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
