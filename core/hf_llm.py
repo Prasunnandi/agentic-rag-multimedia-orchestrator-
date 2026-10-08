@@ -24,8 +24,6 @@ def _get_pipeline(model_id: str, max_new_tokens: int):
             "text-generation",
             model=model_id,
             device=device,
-            max_new_tokens=max_new_tokens,
-            do_sample=False,
             pad_token_id=50256,  # eos token for GPT-2 family — avoids warning
         )
     return _PIPELINE_CACHE[model_id]
@@ -53,7 +51,7 @@ class HFInferenceLLM(LLM):
             pipe = _get_pipeline(self.model_id, self.max_new_tokens)
             # Truncate to avoid token overflow
             truncated = prompt[:800]
-            result = pipe(truncated)
+            result = pipe(truncated, max_new_tokens=self.max_new_tokens, do_sample=False)
             if result and isinstance(result, list):
                 full_text = result[0].get("generated_text", "")
                 # Strip the input prompt from output (text-generation includes it)
