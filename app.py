@@ -3,7 +3,7 @@ import streamlit as st
 import os
 import tempfile
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEndpoint
+from core.hf_llm import HFInferenceLLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -38,19 +38,20 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Syne', sans-serif !important; color: #e8e
 """, unsafe_allow_html=True)
 
 st.title("🎥 AI Video Assistant & Document RAG")
-st.markdown("Powered by Hugging Face API (Mistral), Whisper (Tiny), and LangChain")
+st.markdown("Powered by Hugging Face Inference API • Whisper Tiny • LangChain")
 
 # Initialize LLM
 hf_token = os.getenv("HF_TOKEN")
 if not hf_token:
-    st.error("Please set HF_TOKEN in your .env file")
+    st.error("Please set HF_TOKEN in your .env file or Streamlit Secrets.")
     st.stop()
 
 @st.cache_resource
 def get_llm():
-    return HuggingFaceEndpoint(
-        repo_id="HuggingFaceH4/zephyr-7b-beta",
-        huggingfacehub_api_token=hf_token,
+    # Uses direct requests to HF API — bypasses broken provider routing
+    return HFInferenceLLM(
+        model_id="mistralai/Mistral-7B-Instruct-v0.2",
+        hf_token=hf_token,
         max_new_tokens=512,
         temperature=0.3
     )
